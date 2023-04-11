@@ -45,11 +45,38 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a
 	return true;
 }
 
+class DialogueHook
+{
+public:
+	static void Hook()
+	{
+		_ProcessMessage = REL::Relocation<uintptr_t>(REL::ID(RE::VTABLE_DialogueMenu[0])).write_vfunc(0x4, ProcessMessage);
+	}
+
+private:
+	static RE::UI_MESSAGE_RESULTS ProcessMessage(void* self, RE::UIMessage& a_message)
+	{
+		if (a_message.type == RE::UI_MESSAGE_TYPE::kUpdate) {
+			if (auto ui = RE::UI::GetSingleton()) {
+				if (auto menu = ui->GetMenu(RE::DialogueMenu::MENU_NAME).get()) {
+					if (auto movie = menu->uiMovie.get()) {
+						movie->SetVariable("_root.DialogueMenu_mc.bAllowProgress", true, RE::GFxMovie::SetVarType::kNormal);
+					}
+				}
+			}
+		}
+
+		return _ProcessMessage(self, a_message);
+	}
+
+	static inline REL::Relocation<decltype(ProcessMessage)> _ProcessMessage;
+};
+
 static void SKSEMessageHandler(SKSE::MessagingInterface::Message* message)
 {
 	switch (message->type) {
 	case SKSE::MessagingInterface::kDataLoaded:
-		//
+		DialogueHook::Hook();
 
 		break;
 	}
