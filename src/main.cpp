@@ -54,13 +54,73 @@ public:
 	}
 
 private:
+	class SkipTextFunc : public RE::GFxFunctionHandler
+	{
+	public:
+		void Call(Params& a_params) override
+		{
+			RE::GFxValue bAllowProgress;
+			a_params.thisPtr->GetMember("bAllowProgress", &bAllowProgress);
+
+			if (!bAllowProgress.IsBool())
+				return;
+
+			if (bAllowProgress.GetBool()) {
+				_generic_foo_<50614, void(void*)>::eval(nullptr);
+			}
+		}
+	};
+
+	class OnItemSelectFunc : public RE::GFxFunctionHandler
+	{
+	public:
+		void Call(Params& a_params) override
+		{
+			RE::GFxValue bAllowProgress;
+			a_params.thisPtr->GetMember("bAllowProgress", &bAllowProgress);
+
+			if (!bAllowProgress.IsBool())
+				return;
+
+			//a_params.argCount
+
+			if (bAllowProgress.GetBool()) {
+			}
+		}
+	};
+
+	static void Install(RE::GFxMovieView* a_view, const char* a_pathToObj) {
+		RE::GFxValue obj;
+		a_view->GetVariable(&obj, a_pathToObj);
+		if (!obj.IsObject()) {
+			return;
+		}
+
+		{
+			RE::GFxValue SkipText;
+			auto SkipTextImpl = RE::make_gptr<SkipTextFunc>();
+
+			a_view->CreateFunction(&SkipText, SkipTextImpl.get());
+			obj.SetMember("SkipText", SkipText);
+		}
+
+		{
+			RE::GFxValue onItemSelect;
+			auto onItemSelectImpl = RE::make_gptr<OnItemSelectFunc>();
+
+			a_view->CreateFunction(&onItemSelect, onItemSelectImpl.get());
+			obj.SetMember("onItemSelect", onItemSelect);
+		}
+	}
+
 	static RE::UI_MESSAGE_RESULTS ProcessMessage(void* self, RE::UIMessage& a_message)
 	{
-		if (a_message.type == RE::UI_MESSAGE_TYPE::kUpdate) {
+		if (a_message.type == RE::UI_MESSAGE_TYPE::kShow) {
 			if (auto ui = RE::UI::GetSingleton()) {
 				if (auto menu = ui->GetMenu(RE::DialogueMenu::MENU_NAME).get()) {
 					if (auto movie = menu->uiMovie.get()) {
-						movie->SetVariable("_root.DialogueMenu_mc.bAllowProgress", true, RE::GFxMovie::SetVarType::kNormal);
+						Install(movie, "_root.DialogueMenu_mc");
+						//movie->SetVariable("_root.DialogueMenu_mc.bAllowProgress", true, RE::GFxMovie::SetVarType::kNormal);
 					}
 				}
 			}
@@ -75,7 +135,7 @@ private:
 static void SKSEMessageHandler(SKSE::MessagingInterface::Message* message)
 {
 	switch (message->type) {
-	case SKSE::MessagingInterface::kDataLoaded:
+	case SKSE::MessagingInterface::kInputLoaded:
 		DialogueHook::Hook();
 
 		break;
